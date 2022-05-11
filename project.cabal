@@ -1,0 +1,17 @@
+name:          project
+version:       0.0.0
+cabal-version: >= 1.10
+build-type:    Simple
+
+library
+  default-language: Haskell2010
+  hs-source-dirs:   lib
+  build-depends:    base
+  exposed-modules:  Data.MonadTrans, Data.C, Data.PosMonad, Data.Writer
+
+-- executable demo
+--   default-language: Haskell2010
+--   hs-source-dirs:   demo
+--   main-is:          Main.hs
+--   build-depends:    base
+--                   , project
