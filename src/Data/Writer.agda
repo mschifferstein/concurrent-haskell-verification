@@ -1,19 +1,14 @@
 module Data.Writer where
 
 open import Haskell.Prelude
-import Haskell.Prim.Monad as Monad
-import Haskell.Prim.Applicative as Applicative
-import Haskell.Prim.Functor as Functor
-import Haskell.Prim.String as String
-import Haskell.Prim.Tuple as Tuple
 
-W : Set → Set
-W a = a × String
+record W (a : Set) : Set where
+    constructor MkW
+    field
+        value : a
+        msg : String
+open W public
 {-# COMPILE AGDA2HS W #-}
-
--- data W (a : Set) : Set where
---     w : a → a × String
--- {-# COMPILE AGDA2HS W #-}
 
 record Writer (m : Set → Set) : Set₁ where
     field
@@ -23,27 +18,24 @@ open Writer ⦃...⦄ public
 {-# COMPILE AGDA2HS Writer class #-} -- note the 'class' added here to ensure it translates to a Haskell class.
 
 instance
-    iFunctor : Functor W
-    iFunctor .fmap f (a , s) = (f a , s)
-    {-# COMPILE AGDA2HS iFunctor #-}
+    iFunctorW : Functor W
+    iFunctorW .fmap f (MkW x s)   = MkW (f x) s
+    {-# COMPILE AGDA2HS iFunctorW #-}
 
-    iApplicative : Applicative W
-    iApplicative .pure a = a , []
-    iApplicative ._<*>_ (f , s) (a , s') = (f a , s ++ s')
-    {-# COMPILE AGDA2HS iApplicative #-}
+    iApplicativeW : Applicative W
+    iApplicativeW .pure a                        = MkW a ""
+    iApplicativeW ._<*>_ (MkW f s) (MkW x s')    = MkW (f x) (s ++ s')
+    {-# COMPILE AGDA2HS iApplicativeW #-}
 
-    iMonad : Monad W
-    iMonad ._>>=_ (a , s) k = let 
-                            b = fst (k a)
-                            s' = snd (k a)
-                        in (b , (s ++ s'))
-    {-# COMPILE AGDA2HS iMonad #-}
+    iMonadW : Monad W
+    iMonadW ._>>=_ (MkW x s) k   = MkW (k x .value) (s ++ k x .msg)
+    {-# COMPILE AGDA2HS iMonadW #-}
 
-    iWriter : Writer W
-    iWriter .write s = (tt , s)
-    {-# COMPILE AGDA2HS iWriter #-}
+    iWriterW : Writer W
+    iWriterW .write s = MkW tt s
+    {-# COMPILE AGDA2HS iWriterW #-}
 
 
 output : W a → String
-output (a , s) = s
+output x = x .msg
 {-# COMPILE AGDA2HS output #-}
