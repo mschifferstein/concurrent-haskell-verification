@@ -1,23 +1,23 @@
 module Data.Writer where
 
-type W a = (a, String)
+data W a = MkW{value :: a, msg :: String}
 
 class Monad m => Writer m where
     write :: String -> m ()
 
 instance Functor W where
-    fmap f (a, s) = (f a, s)
+    fmap f (MkW x s) = MkW (f x) s
 
 instance Applicative W where
-    pure a = (a, [])
-    (f, s) <*> (a, s') = (f a, s ++ s')
+    pure a = MkW a ""
+    MkW f s <*> MkW x s' = MkW (f x) (s ++ s')
 
 instance Monad W where
-    (a, s) >>= k = (fst (k a), s ++ snd (k a))
+    MkW x s >>= k = MkW (value (k x)) (s ++ msg (k x))
 
 instance Writer W where
-    write s = ((), s)
+    write s = MkW () s
 
 output :: W a -> String
-output (a, s) = s
+output x = msg x
 

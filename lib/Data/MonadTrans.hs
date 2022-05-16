@@ -1,5 +1,5 @@
 module Data.MonadTrans where
 
-class MonadTrans τ where
-    lift :: Monad m => m a -> τ m a
+class MonadTrans t where
+    lift :: Monad m => m a -> t m a
 

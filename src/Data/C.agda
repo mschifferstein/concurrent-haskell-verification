@@ -2,26 +2,27 @@ module Data.C where
 
 open import Haskell.Prelude
 open import Data.MonadTrans
-open import Data.PosMonad
 
--- TODO: PosMonad should accept W
--- {-# NO_POSITIVITY_CHECK #-}
-data Action (m : PosMonad) : Set where
-    Atom : (toMonad m) (Action m) → Action m -- TODO
+{-# FOREIGN AGDA2HS import Data.MonadTrans #-}
+
+-- Whatever I'll prove holds under the assumption that the monads used are positive
+{-# NO_POSITIVITY_CHECK #-}
+data Action (m : Set → Set) : Set where
+    Atom : m (Action m) → Action m
     Fork : Action m → Action m → Action m
     Stop : Action m
 {-# COMPILE AGDA2HS Action #-}
 
-C : PosMonad → Set → Set
+C : (Set → Set) → Set → Set
 C m a = (a → Action m) → Action m
 {-# COMPILE AGDA2HS C #-}
 
 instance
     -- See https://wiki.haskell.org/Monad
     -- Paper doesn't provide Functor/Applicative instances because only since GHC 7.10 are those superclasses of Monad
-    iFunctorC : { @0 m : PosMonad } → Functor (C m)
-    iApplicativeC : { @0 m : PosMonad } → Applicative (C m)
-    iMonadC : { @0 m : PosMonad } → Monad (C m)
+    iFunctorC : ⦃ Monad m ⦄ → Functor (C m)
+    iApplicativeC : ⦃ Monad m ⦄ → Applicative (C m)
+    iMonadC : ⦃ Monad m ⦄ → Monad (C m)
 
     iMonadC ._>>=_ = λ f k c → f (λ a → k a c)
     {-# COMPILE AGDA2HS iMonadC #-}
@@ -36,35 +37,41 @@ instance
     iFunctorC .fmap f x = x >>= (pure ∘ f)
     {-# COMPILE AGDA2HS iFunctorC #-}
 
--- atom : { @0 m : PosMonad } → { α : Set } → m α → C m α
--- atom m = λ c → Atom (m >>= (λ a → return (c a)))
--- atom m = λ c → Atom (do
---                         a ← m
---                         return (c a))
--- atom m = fmap m
--- {-# COMPILE AGDA2HS atom #-}
+atom : ⦃ Monad m ⦄ → { @0 a : Set } → m a → C m a
+atom m = λ c → Atom (fmap c m)                      
+{-# COMPILE AGDA2HS atom #-}
 
--- action : ⦃ Monad m ⦄ → C m a → Action m
-action : { @0 m : PosMonad } → C m a → Action m
+action : ⦃ Monad m ⦄ → C m a → Action m
 action m = m (λ _ → Stop)
 {-# COMPILE AGDA2HS action #-}
 
--- stop : ⦃ Monad m ⦄ → C m a
-stop : { @0 m : PosMonad } → C m a
+stop : ⦃ Monad m ⦄ → C m a
 stop = λ _ → Stop
 {-# COMPILE AGDA2HS stop #-} 
 
--- par : ⦃ Monad m ⦄ → { α : Set } → C m α → C m α → C m α
-par : { @0 m : PosMonad }  → { α : Set } → C m α → C m α → C m α
-par m₁ m₂ = λ c → Fork (m₁ c) (m₂ c)
+par : ⦃ Monad m ⦄ → { @0 a : Set } → C m a → C m a → C m a
+par m1 m2 = λ c → Fork (m1 c) (m2 c)
 {-# COMPILE AGDA2HS par #-} 
 
--- fork : ⦃ Monad m ⦄ → { α : Set } → C m α → C m ⊤
-fork : { @0 m : PosMonad } → { α : Set } → C m α → C m ⊤
+fork : ⦃ Monad m ⦄ → { @0 a : Set } → C m a → C m ⊤
 fork m = λ c → Fork (action m) (c tt)
 {-# COMPILE AGDA2HS fork #-} 
 
--- instance
---     iMonadTransC : MonadTrans C
---     iMonadTransC .lift = atom
---     {-# COMPILE AGDA2HS iMonadTransC #-}
+instance
+    iMonadTransC : MonadTrans C
+    iMonadTransC .lift = atom
+    {-# COMPILE AGDA2HS iMonadTransC #-}
+
+{-# NON_TERMINATING #-} -- TODO: what are the consequences of this?
+round_robin : ⦃ Monad m ⦄ → List (Action m) → m ⊤
+round_robin [] = return tt
+round_robin (Atom x ∷ xs) = do
+                            x1 ← x
+                            round_robin (xs ++ (x1 ∷ []))
+round_robin (Fork x y ∷ xs) = round_robin (xs ++ (x ∷ y ∷ []))
+round_robin (Stop ∷ xs) = round_robin xs
+{-# COMPILE AGDA2HS round_robin #-}
+
+run : ⦃ Monad m ⦄ → C m a → m ⊤
+run m = round_robin (action m ∷ [])
+{-# COMPILE AGDA2HS run #-}

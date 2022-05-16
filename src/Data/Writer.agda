@@ -35,7 +35,6 @@ instance
     iWriterW .write s = MkW tt s
     {-# COMPILE AGDA2HS iWriterW #-}
 
-
 output : W a → String
 output x = x .msg
 {-# COMPILE AGDA2HS output #-}
