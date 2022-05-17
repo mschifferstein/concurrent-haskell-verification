@@ -2,6 +2,7 @@ module Data.C where
 
 open import Haskell.Prelude
 open import Data.MonadTrans
+
 {-# FOREIGN AGDA2HS import Data.MonadTrans #-}
 
 -- Whatever I'll prove holds under the assumption that the monads used are positive
@@ -12,11 +13,8 @@ data Action (m : Set → Set) : Set where
     Stop : Action m
 {-# COMPILE AGDA2HS Action #-}
 
-record C (m : Set → Set) (a : Set) : Set where
-    constructor Conc
-    field
-        act : (a → Action m) → Action m
-open C public
+C : (Set → Set) → Set → Set
+C m a = (a → Action m) → Action m
 {-# COMPILE AGDA2HS C #-}
 
 instance
@@ -26,11 +24,10 @@ instance
     iApplicativeC : ⦃ Monad m ⦄ → Applicative (C m)
     iMonadC : ⦃ Monad m ⦄ → Monad (C m)
 
-    iMonadC ._>>=_ f k = Conc (λ c → f .act (λ a → (k a .act) c))
+    iMonadC ._>>=_ = λ f k c → f (λ a → k a c)
     {-# COMPILE AGDA2HS iMonadC #-}
 
-    -- Odd notation here (having x to the right instead of to the left) because otherwise the termination checker complains
-    iApplicativeC .pure = λ x → Conc (λ c → c x)
+    iApplicativeC .pure = λ x c → c x
     iApplicativeC ._<*>_ mf ma = do 
                                     f ← mf
                                     a ← ma
@@ -41,24 +38,23 @@ instance
     {-# COMPILE AGDA2HS iFunctorC #-}
 
 atom : ⦃ Monad m ⦄ → { @0 a : Set } → m a → C m a
-atom m = Conc (λ c → Atom (fmap c m))
+atom m = λ c → Atom (fmap c m)                      
 {-# COMPILE AGDA2HS atom #-}
 
 action : ⦃ Monad m ⦄ → C m a → Action m
--- action m = m (λ _ → Stop)
-action m = m .act (λ _ → Stop)
+action m = m (λ _ → Stop)
 {-# COMPILE AGDA2HS action #-}
 
 stop : ⦃ Monad m ⦄ → C m a
-stop = Conc (λ _ → Stop)
+stop = λ _ → Stop
 {-# COMPILE AGDA2HS stop #-} 
 
 par : ⦃ Monad m ⦄ → { @0 a : Set } → C m a → C m a → C m a
-par m1 m2 = Conc (λ c → Fork (m1 .act c) (m2 .act c))
+par m1 m2 = λ c → Fork (m1 c) (m2 c)
 {-# COMPILE AGDA2HS par #-} 
 
 fork : ⦃ Monad m ⦄ → { @0 a : Set } → C m a → C m ⊤
-fork m = Conc (λ c → Fork (action m) (c tt))
+fork m = λ c → Fork (action m) (c tt)
 {-# COMPILE AGDA2HS fork #-} 
 
 instance
