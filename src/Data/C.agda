@@ -45,7 +45,6 @@ atom m = Conc (λ c → Atom (fmap c m))
 {-# COMPILE AGDA2HS atom #-}
 
 action : ⦃ Monad m ⦄ → C m a → Action m
--- action m = m (λ _ → Stop)
 action m = m .act (λ _ → Stop)
 {-# COMPILE AGDA2HS action #-}
 
@@ -66,16 +65,23 @@ instance
     iMonadTransC .lift = atom
     {-# COMPILE AGDA2HS iMonadTransC #-}
 
-{-# NON_TERMINATING #-} -- TODO: what are the consequences of this?
-round_robin : ⦃ Monad m ⦄ → List (Action m) → m ⊤
-round_robin [] = return tt
-round_robin (Atom x ∷ xs) = do
+data MyNat : Set where
+    Zero : MyNat
+    Suc : ( n : MyNat ) → MyNat
+{-# COMPILE AGDA2HS MyNat #-}
+
+-- 'Fuel' is added as MyNat argument to make this function terminating. 
+-- In practice, we can just pick some really large number when running it.
+round_robin : ⦃ Monad m ⦄ → List (Action m) → MyNat → m ⊤
+round_robin _ Zero = return tt
+round_robin [] (Suc n) = return tt
+round_robin (Atom x ∷ xs) (Suc n) = do
                             x1 ← x
-                            round_robin (xs ++ (x1 ∷ []))
-round_robin (Fork x y ∷ xs) = round_robin (xs ++ (x ∷ y ∷ []))
-round_robin (Stop ∷ xs) = round_robin xs
+                            round_robin (xs ++ (x1 ∷ [])) n
+round_robin (Fork x y ∷ xs) (Suc n) = round_robin (xs ++ (x ∷ y ∷ [])) n
+round_robin (Stop ∷ xs) (Suc n) = round_robin xs n
 {-# COMPILE AGDA2HS round_robin #-}
 
-run : ⦃ Monad m ⦄ → C m a → m ⊤
-run m = round_robin (action m ∷ [])
-{-# COMPILE AGDA2HS run #-}
+run : ⦃ Monad m ⦄ → C m a → MyNat → m ⊤
+run m n = round_robin (action m ∷ []) n
+{-# COMPILE AGDA2HS run #-} 

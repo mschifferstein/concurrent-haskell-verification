@@ -36,12 +36,17 @@ fork m = Conc (\ c -> Fork (action m) (c ()))
 instance MonadTrans C where
     lift = atom
 
-round_robin :: Monad m => [Action m] -> m ()
-round_robin [] = return ()
-round_robin (Atom x : xs) = x >>= \ x1 -> round_robin (xs ++ [x1])
-round_robin (Fork x y : xs) = round_robin (xs ++ [x, y])
-round_robin (Stop : xs) = round_robin xs
+data MyNat = Zero
+           | Suc MyNat
 
-run :: Monad m => C m a -> m ()
-run m = round_robin [action m]
+round_robin :: Monad m => [Action m] -> MyNat -> m ()
+round_robin _ Zero = return ()
+round_robin [] (Suc n) = return ()
+round_robin (Atom x : xs) (Suc n)
+  = x >>= \ x1 -> round_robin (xs ++ [x1]) n
+round_robin (Fork x y : xs) (Suc n) = round_robin (xs ++ [x, y]) n
+round_robin (Stop : xs) (Suc n) = round_robin xs n
+
+run :: Monad m => C m a -> MyNat -> m ()
+run m n = round_robin [action m] n
 
