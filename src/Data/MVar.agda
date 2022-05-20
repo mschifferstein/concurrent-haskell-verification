@@ -62,11 +62,22 @@ takeIORef v = do
                 return $ fst v1
 {-# COMPILE AGDA2HS takeIORef #-}
 
+-- This is Claessen 1999's readMVar
+{-# NON_TERMINATING #-}
+takeMVar : MVar a → C IO a
+takeMVar v = do
+                v1 ← lift (takeIORef v)
+                case v1 of λ 
+                    {Nothing → takeMVar v;
+                     (Just a) → return a}
+{-# COMPILE AGDA2HS takeMVar #-}
+
+-- This definition allows for multiple reads (value is not removed after being read)
 {-# NON_TERMINATING #-}
 readMVar : MVar a → C IO a
 readMVar v = do
-                v1 ← lift (takeIORef v)
-                case v1 of λ 
+                v1 ← lift (readIORef v)
+                case fst v1 of λ 
                     {Nothing → readMVar v;
                      (Just a) → return a}
 {-# COMPILE AGDA2HS readMVar #-}

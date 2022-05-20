@@ -35,11 +35,19 @@ takeIORef v
   = readIORef v >>=
       \ v1 -> writeIORef v (Nothing, True) >> (return $ fst v1)
 
-readMVar :: MVar a -> C IO a
-readMVar v
+takeMVar :: MVar a -> C IO a
+takeMVar v
   = lift (takeIORef v) >>=
       \ v1 ->
         case v1 of
+            Nothing -> takeMVar v
+            Just a -> return a
+
+readMVar :: MVar a -> C IO a
+readMVar v
+  = lift (readIORef v) >>=
+      \ v1 ->
+        case fst v1 of
             Nothing -> readMVar v
             Just a -> return a
 
