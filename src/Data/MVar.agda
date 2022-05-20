@@ -7,6 +7,8 @@ open import Data.MonadTrans
 {-# FOREIGN AGDA2HS import Data.MonadTrans #-}
 {-# FOREIGN AGDA2HS import Data.IORef #-} -- built into Haskell
 
+-- TODO: resolve non-termination by introducing time-outs?
+
 postulate 
     IO : Set → Set
     IORef : Set → Set -- corresponds to Haskell's IORef
