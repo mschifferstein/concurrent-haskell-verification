@@ -31,8 +31,8 @@ readChan (Channel r _)
   = takeMVar r >>=
       \ stream ->
         readMVar stream >>=
-          \
-              (Item val tl) -> writeMVar r tl >> return val
+          \case
+              Item val tl -> writeMVar r tl >> return val
 
 dupChan :: Chan a -> C IO (Chan a)
 dupChan (Channel _ w)

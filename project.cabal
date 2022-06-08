@@ -8,6 +8,7 @@ library
   hs-source-dirs:   lib
   build-depends:    base
   exposed-modules:  Data.MonadTrans, Data.C, Data.Writer, Data.CWriter, Data.MVar, Data.Channel
+  default-extensions: LambdaCase
 
 executable demo
   default-language: Haskell2010

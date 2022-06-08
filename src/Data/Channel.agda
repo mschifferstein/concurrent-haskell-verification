@@ -22,7 +22,7 @@ Stream a = MVar (It a)
 {-# COMPILE AGDA2HS Stream #-}
 
 data Chan (a : Set) : Set where
-    Channel : ( m1 : MVar (Stream a)) (m2 : MVar (Stream a)) → Chan a
+    Channel : MVar (Stream a) → MVar (Stream a) → Chan a
 {-# COMPILE AGDA2HS Chan #-}
 
 newChan : C IO (Chan a)
@@ -42,11 +42,17 @@ writeChan (Channel _ w) val = do
 {-# COMPILE AGDA2HS writeChan #-}
 
 readChan : Chan a → C IO a
-readChan (Channel r _) = do
+readChan (Channel r _) =
+                        do
                             stream ← takeMVar r
-                            (Item val tl) ← readMVar stream
+                            (Item val tl) ← readMVar stream -- requires LambdaCase among the default-extensions in project.cabal
                             writeMVar r tl
                             return val
+                            
+                        -- Why does this desugared syntax not work??
+                        -- takeMVar r >>= λ s → 
+                        --                 readMVar s >>= λ (Item val tl) → 
+                        --                                 writeMVar r tl >> return val
 {-# COMPILE AGDA2HS readChan #-}
 
 dupChan : Chan a → C IO (Chan a)
@@ -64,4 +70,4 @@ ungetChan (Channel r _) val = do
                                 readEnd ← takeMVar r
                                 writeMVar newReadEnd (Item val readEnd)
                                 writeMVar r newReadEnd
-{-# COMPILE AGDA2HS ungetChan #-}
+{-# COMPILE AGDA2HS ungetChan #-} 

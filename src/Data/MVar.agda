@@ -3,11 +3,13 @@ module Data.MVar where
 open import Haskell.Prelude
 open import Data.C
 open import Data.MonadTrans
+open import Data.Writer
 {-# FOREIGN AGDA2HS import Data.C #-}
 {-# FOREIGN AGDA2HS import Data.MonadTrans #-}
 {-# FOREIGN AGDA2HS import Data.IORef #-} -- built into Haskell
 
--- TODO: resolve non-termination by introducing time-outs?
+-- TODO: resolve non-termination by introducing time-outs - can I throw an error?
+-- TODO: postulate trace function (for debugging)
 
 postulate 
     IO : Set → Set
@@ -25,13 +27,11 @@ MVar a = IORef (Maybe a × Bool)
 {-# COMPILE AGDA2HS MVar #-}
 
 newEmptyMVar : { @0 a : Set } → C IO (MVar a)
-newEmptyMVar = lift (do
-                        v ← newIORef (Nothing , True)
-                        return v)
+newEmptyMVar = lift (newIORef (Nothing , True))
 {-# COMPILE AGDA2HS newEmptyMVar #-}
 
 newMVar : a → C IO (MVar a)
-newMVar a = lift (newIORef ((Just a , True)))
+newMVar a = lift (newIORef (Just a , True))
 {-# COMPILE AGDA2HS newMVar #-}
 
 checkWriteOk : MVar a → IO (Maybe a × Bool)
@@ -47,6 +47,7 @@ endWrite v a = writeIORef v (Just a , True)
 
 -- This version of writeMVar blocks when the MVar is full - in contrast to Claessen 1999, more true to actual (current) Haskell implementation.
 -- According to the semantics of Peyton Jones (1996), writing to a full MVar throws an error instead.
+-- Corresponds to putMVar in Control.Concurrent
 {-# NON_TERMINATING #-}
 writeMVar : MVar a → a → C IO ⊤
 writeMVar v a = do
@@ -74,12 +75,23 @@ takeMVar v = do
                      (Just a) → return a}
 {-# COMPILE AGDA2HS takeMVar #-}
 
+
+takeIORef2 : MVar a → IO (Maybe a)
+takeIORef2 v = do
+                v1 ← readIORef v
+                -- case (fst v1) of λ
+                --     Just z → writeIORef v (Just z , True)
+                --     Nothing → writeIORef v (Nothing , True)
+                writeIORef v ((fst v1) , True) -- shouldn't be necessary, readIORef doesn't remove value?
+                return $ fst v1
+{-# COMPILE AGDA2HS takeIORef2 #-}
+
 -- This definition allows for multiple reads (value is not removed after being read)
 {-# NON_TERMINATING #-}
 readMVar : MVar a → C IO a
 readMVar v = do
-                v1 ← lift (readIORef v)
-                case fst v1 of λ 
+                v1 ← lift (takeIORef2 v)
+                case v1 of λ 
                     {Nothing → readMVar v;
                      (Just a) → return a}
 {-# COMPILE AGDA2HS readMVar #-}

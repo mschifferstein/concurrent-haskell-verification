@@ -9,7 +9,7 @@ import Data.IORef
 type MVar a = IORef (Maybe a, Bool)
 
 newEmptyMVar :: C IO (MVar a)
-newEmptyMVar = lift (newIORef (Nothing, True) >>= return)
+newEmptyMVar = lift (newIORef (Nothing, True))
 
 newMVar :: a -> C IO (MVar a)
 newMVar a = lift (newIORef (Just a, True))
@@ -43,11 +43,16 @@ takeMVar v
             Nothing -> takeMVar v
             Just a -> return a
 
+takeIORef2 :: MVar a -> IO (Maybe a)
+takeIORef2 v
+  = readIORef v >>=
+      \ v1 -> writeIORef v (fst v1, True) >> (return $ fst v1)
+
 readMVar :: MVar a -> C IO a
 readMVar v
-  = lift (readIORef v) >>=
+  = lift (takeIORef2 v) >>=
       \ v1 ->
-        case fst v1 of
+        case v1 of
             Nothing -> readMVar v
             Just a -> return a
 
