@@ -1,4 +1,4 @@
-module Data.PosMonad where
+module Archive.PosMonad where
 
 open import Haskell.Prelude
 open import Data.Writer

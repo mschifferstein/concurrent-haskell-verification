@@ -26,6 +26,3 @@ record C (m : Set → Set) (a : Set) : Set where
 open C public
 ```
 
-
-# Issue 2: solving instance constraints for CWriter #
-

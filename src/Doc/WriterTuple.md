@@ -1,5 +1,5 @@
-With how Tuples are defined in Agda2hs, Action would not be strictly positive when posWriter is used as equivalent to W
-Therefore, W is represented as a record with fields instead
+With how Tuples are defined in Agda2hs, Action would not be strictly positive when posWriter is used as equivalent to W.
+Therefore, W is represented as a record with fields instead.
 
 Previously, W was defined as:
 ```
