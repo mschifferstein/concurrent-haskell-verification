@@ -26,8 +26,8 @@ instance
     iApplicativeC : ⦃ Monad m ⦄ → Applicative (C m)
     iMonadC : ⦃ Monad m ⦄ → Monad (C m)
 
-    iMonadC ._>>=_ f k = Conc (λ c → f .act (λ a → (k a .act) c))
-    {-# COMPILE AGDA2HS iMonadC #-}
+    iFunctorC .fmap f x = x >>= (pure ∘ f)
+    {-# COMPILE AGDA2HS iFunctorC #-}
 
     -- Odd notation here (having x to the right instead of to the left) because otherwise the termination checker complains
     iApplicativeC .pure = λ x → Conc (λ c → c x)
@@ -37,8 +37,8 @@ instance
                                     pure (f a)
     {-# COMPILE AGDA2HS iApplicativeC #-}
 
-    iFunctorC .fmap f x = x >>= (pure ∘ f)
-    {-# COMPILE AGDA2HS iFunctorC #-}
+    iMonadC ._>>=_ f k = Conc (λ c → f .act (λ a → (k a .act) c))
+    {-# COMPILE AGDA2HS iMonadC #-}
 
 atom : ⦃ Monad m ⦄ → { @0 a : Set } → m a → C m a
 atom m = Conc (λ c → Atom (fmap c m))
@@ -72,9 +72,9 @@ data MyNat : Set where
 
 -- 'Fuel' is added as MyNat argument to make this function terminating. 
 -- In practice, we can just pick some really large number when running it.
-round_robin : ⦃ Monad m ⦄ → List (Action m) → MyNat → m ⊤
-round_robin _ Zero = return tt
-round_robin [] (Suc n) = return tt
+round_robin : ⦃ Monad m ⦄ → List (Action m) → MyNat → m Bool
+round_robin [] _ = return True
+round_robin xs Zero = return False
 round_robin (Atom x ∷ xs) (Suc n) = do
                             x1 ← x
                             round_robin (xs ++ (x1 ∷ [])) n
@@ -82,6 +82,6 @@ round_robin (Fork x y ∷ xs) (Suc n) = round_robin (xs ++ (x ∷ y ∷ [])) n
 round_robin (Stop ∷ xs) (Suc n) = round_robin xs n
 {-# COMPILE AGDA2HS round_robin #-}
 
-run : ⦃ Monad m ⦄ → C m a → MyNat → m ⊤
+run : ⦃ Monad m ⦄ → C m a → MyNat → m Bool
 run m n = round_robin (action m ∷ []) n
-{-# COMPILE AGDA2HS run #-} 
+{-# COMPILE AGDA2HS run #-}
