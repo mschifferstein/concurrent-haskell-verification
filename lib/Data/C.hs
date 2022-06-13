@@ -5,6 +5,7 @@ import Data.MonadTrans
 data Action m = Atom (m (Action m))
               | Fork (Action m) (Action m)
               | Stop
+              | NonTerm
 
 data C m a = Conc{act :: (a -> Action m) -> Action m}
 
@@ -39,14 +40,15 @@ instance MonadTrans C where
 data MyNat = Zero
            | Suc MyNat
 
-round_robin :: Monad m => [Action m] -> MyNat -> m ()
-round_robin _ Zero = return ()
-round_robin [] (Suc n) = return ()
+round_robin :: Monad m => [Action m] -> MyNat -> m Bool
+round_robin [] _ = return True
+round_robin xs Zero = return False
+round_robin (NonTerm : xs) _ = return False
 round_robin (Atom x : xs) (Suc n)
   = x >>= \ x1 -> round_robin (xs ++ [x1]) n
 round_robin (Fork x y : xs) (Suc n) = round_robin (xs ++ [x, y]) n
 round_robin (Stop : xs) (Suc n) = round_robin xs n
 
-run :: Monad m => C m a -> MyNat -> m ()
+run :: Monad m => C m a -> MyNat -> m Bool
 run m n = round_robin [action m] n
 
