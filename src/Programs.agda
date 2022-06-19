@@ -1,86 +1,147 @@
+module Programs where
+
 open import Haskell.Prelude
-open import Data.C as C
-open import Data.MVarIOs as MVar
-open import Data.IOs as IOs
-open import Data.Channel as Channel
+open import Data.C
+open import Data.MVarIOs
+open import Data.IOs
+-- open import Data.Channel as Channel
 open import Data.ProofLib
-open import Data.MonadTrans as MonadTrans
+open import Data.MonadTrans
 open import Agda.Builtin.Nat
 {-# FOREIGN AGDA2HS import Data.MonadTrans #-}
-{-# FOREIGN AGDA2HS import Data.C as C#-}
+{-# FOREIGN AGDA2HS import Data.C #-}
 {-# FOREIGN AGDA2HS import Data.IOs #-}
 {-# FOREIGN AGDA2HS import Data.MVarIOs #-}
 
-natToNat : Nat -> MyNat
-natToNat zero = C.Zero
-natToNat (suc n) = C.Suc (natToNat n)
+natToMyNat : Nat -> MyNat
+natToMyNat zero = Zero
+natToMyNat (suc n) = Suc (natToMyNat n)
 
 {-# FOREIGN AGDA2HS 
 -- To convert regular integers to the MyNat data type used by C.run
-natToNat :: Int -> C.MyNat
-natToNat n | n <= 0 = C.Zero
-           | otherwise = C.Suc (natToNat (n-1))
+natToMyNat :: Int -> MyNat
+natToMyNat n | n <= 0 = Zero
+           | otherwise = Suc (natToMyNat (n-1))
  #-}
 
-fuel = natToNat 9223372036854775800
+fuel = natToMyNat 9223372036854775800
 {-# COMPILE AGDA2HS fuel #-}
 
-mVarDeadlock : Bool
-mVarDeadlock = runIOs (C.run (do
-                a <- MVar.newEmptyMVar
-                b <- MVar.newEmptyMVar
-                C.fork (do
-                            MVar.takeMVar a fuel
-                            MVar.writeMVar b 1 fuel)
-                C.fork (do
-                            MVar.takeMVar b fuel
-                            MVar.writeMVar a 2 fuel)
-                ) (natToNat 100000))
-{-# COMPILE AGDA2HS mVarDeadlock #-}
+-- mVarDeadlock : Bool
+-- mVarDeadlock = runIOs (run (do
+--                 a <- newEmptyMVar
+--                 b <- newEmptyMVar
+--                 fork (do
+--                         takeMVar a fuel
+--                         writeMVar b 1 fuel)
+--                 takeMVar b fuel
+--                 writeMVar a 2 fuel
+--                 ) (natToMyNat 100000))
+-- {-# COMPILE AGDA2HS mVarDeadlock #-}
 
-deadlock-proof : mVarDeadlock ≡ False
-deadlock-proof = refl
+-- deadlock-proof : mVarDeadlock ≡ False
+-- deadlock-proof = refl
 
-simpleDeadlock : Bool
-simpleDeadlock = runIOs (C.run (do
-                a <- MVar.newEmptyMVar
-                MVar.takeMVar a fuel
-                ) (natToNat 100000))
-{-# COMPILE AGDA2HS simpleDeadlock #-}
+-- mVarNoDeadlock : Bool
+-- mVarNoDeadlock = runIOs (run (do
+--                 a <- newEmptyMVar
+--                 b <- newEmptyMVar
+--                 fork (do
+--                         takeMVar a fuel
+--                         writeMVar b 1 fuel)
+--                 writeMVar a 2 fuel
+--                 takeMVar b fuel
+--                 ) (natToMyNat 100000))
+-- {-# COMPILE AGDA2HS mVarNoDeadlock #-}
 
-simple-deadlock-proof : simpleDeadlock ≡ False
-simple-deadlock-proof = refl
+-- no-deadlock-proof : mVarNoDeadlock ≡ True
+-- no-deadlock-proof = refl
 
--- ungetChanDeadlock : IO ⊤
--- ungetChanDeadlock = C.run (do
---                             chan <- Channel.newChan
---                             C.fork (do
---                                         val <- Channel.readChan chan
---                                         return val)
---                             Channel.ungetChan chan false
---                             ) (natToNat 9223372036854775800)
+-- simpleDeadlock : Bool
+-- simpleDeadlock = runIOs (run (do
+--                 a <- newEmptyMVar
+--                 takeMVar a fuel
+--                 ) (natToMyNat 100000))
+-- {-# COMPILE AGDA2HS simpleDeadlock #-}
+
+-- simple-deadlock-proof : simpleDeadlock ≡ False
+-- simple-deadlock-proof = refl
+
+-- -- ungetChanDeadlock : IO ⊤
+-- -- ungetChanDeadlock = C.run (do
+-- --                             chan <- Channel.newChan
+-- --                             C.fork (do
+-- --                                         val <- Channel.readChan chan
+-- --                                         return val)
+-- --                             Channel.ungetChan chan false
+-- --                             ) (natToMyNat 9223372036854775800)
 
 -- incrementValTwice : Bool
--- -- incrementValTwice : MVar Nat → C IO Nat
--- incrementValTwice = run-s (C.run (do
---                             var <- MVar.newMVar 0
---                             C.par (do
---                                         val <- MVar.readMVar var fuel -- works with takeMVar, but not with readMVar...
---                                         MVar.writeMVar var (val Agda.Builtin.Nat.+ 1) fuel)
---                                   (do
---                                         val <- MVar.readMVar var fuel -- TODO: extract value from Maybe
---                                         MVar.writeMVar var (val Agda.Builtin.Nat.+ 1) fuel)
---                             -- MVar.takeMVar var
---                         ) 
---                         -- (natToNat 9223372036854775800)
---                         (natToNat 100))
+-- incrementValTwice = runIOs (run (do 
+--                             var <- newMVar 0
+--                             fork (do
+--                                         val <- readMVar var fuel
+--                                         takeMVar var fuel -- empty the MVar
+--                                         case val of λ
+--                                             {Nothing → return Nothing;
+--                                              (Just x) → writeMVar var (x Agda.Builtin.Nat.+ 1) fuel})
+--                             val <- readMVar var fuel
+--                             takeMVar var fuel -- empty the MVar
+--                             case val of λ
+--                                 {Nothing → return Nothing;
+--                                     (Just x) → writeMVar var (x Agda.Builtin.Nat.+ 1) fuel}
+--                         )
+--                         (natToMyNat 100000))
 
-simple : Bool
-simple = runIOs (C.run (do
-                  var <- MVar.newEmptyMVar
-                  MVar.writeMVar var 5 fuel)
-            (natToNat 100000))
-{-# COMPILE AGDA2HS simple #-}
+-- inc-terminates : incrementValTwice ≡ True
+-- inc-terminates = refl
 
-inc-terminates : simple ≡ True
-inc-terminates = refl
+-- whatsfinal : Bool
+-- whatsfinal = runIOs (run (do 
+--                             var <- newMVar 0
+--                             fork (do
+--                                         val <- takeMVar var fuel
+--                                         case val of λ
+--                                             {Nothing → return Nothing;
+--                                              (Just x) → writeMVar var (x Agda.Builtin.Nat.+ 1) fuel})
+--                             fork (do
+--                                         val <- takeMVar var fuel
+--                                         case val of λ
+--                                             {Nothing → return Nothing;
+--                                              (Just x) → writeMVar var (x Agda.Builtin.Nat.+ 1) fuel})
+--                             val <- readMVar var fuel
+--                             newVar <- newEmptyMVar
+--                             case val of λ
+--                                             {Nothing → return Nothing;
+--                                              (Just x) → writeMVar newVar x fuel}
+--                         )
+--                         (natToMyNat 100000))
+
+-- whatsfinal-terminates : whatsfinal ≡ True
+-- whatsfinal-terminates = refl
+
+-- simple : Bool
+-- simple = runIOs (run (do
+--                   var <- newEmptyMVar
+--                   writeMVar var 5 fuel)
+--             (natToMyNat 100000))
+-- {-# COMPILE AGDA2HS simple #-}
+
+-- simple-terminates : simple ≡ True
+-- simple-terminates = refl
+
+failDetect : Bool
+failDetect = runIOs (run (do
+                a <- newEmptyMVar
+                mutex <- newMVar 0
+                fork (do
+                        takeMVar mutex fuel 
+                        writeMVar a 2 fuel
+                        writeMVar mutex 0 fuel)
+                takeMVar mutex fuel
+                takeMVar a fuel
+                writeMVar mutex 0 fuel
+                ) (natToMyNat 100000))
+
+fail-proof : failDetect ≡ True
+fail-proof = refl

@@ -39,7 +39,7 @@ endWrite v n = writeIORef v (Just n , True)
 -- This version of writeMVar blocks when the MVar is full - in contrast to Claessen 1999, more true to actual (current) Haskell implementation.
 -- According to the semantics of Peyton Jones (1996), writing to a full MVar throws an error instead.
 -- Corresponds to putMVar in Control.Concurrent
--- {-# NON_TERMINATING #-} -- TODO:
+-- Fuel solves termination issue, at the cost of more convoluted Maybe return type
 writeMVar : MVar → Nat → MyNat → C IOs (Maybe ⊤)
 writeMVar v n Zero = return Nothing
 writeMVar v n (Suc fuel) = do
@@ -60,7 +60,7 @@ takeIORef v = do
 {-# COMPILE AGDA2HS takeIORef #-}
 
 -- This is Claessen 1999's readMVar
--- {-# NON_TERMINATING #-} -- TODO:
+-- Fuel solves termination issue, at the cost of more convoluted Maybe return type
 takeMVar : MVar → MyNat → C IOs (Maybe Nat)
 takeMVar _ Zero = return Nothing
 takeMVar v (Suc n) = do
@@ -73,16 +73,12 @@ takeMVar v (Suc n) = do
 
 takeIORef2 : MVar → IOs (Maybe Nat)
 takeIORef2 v = do
-                v1 ← readIORef v
-                -- case (fst v1) of λ
-                --     Just z → writeIORef v (Just z , True)
-                --     Nothing → writeIORef v (Nothing , True)
-                writeIORef v ((fst v1) , True) -- shouldn't be necessary, readIORef doesn't remove value?
+                v1 ← readIORef v -- doesn't remove value from MVar
                 return $ fst v1
 {-# COMPILE AGDA2HS takeIORef2 #-}
 
 -- This definition allows for multiple reads (value is not removed after being read)
--- {-# NON_TERMINATING #-} -- TODO:
+-- Fuel solves termination issue, at the cost of more convoluted Maybe return type
 readMVar : MVar → MyNat → C IOs (Maybe Nat)
 readMVar _ Zero = return Nothing
 readMVar v (Suc n) = do

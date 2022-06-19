@@ -48,9 +48,7 @@ takeMVar v (Suc n)
             Just a -> return (Just a)
 
 takeIORef2 :: MVar -> IOs (Maybe Natural)
-takeIORef2 v
-  = readIORef v >>=
-      \ v1 -> writeIORef v (fst v1, True) >> (return $ fst v1)
+takeIORef2 v = readIORef v >>= \ v1 -> return $ fst v1
 
 readMVar :: MVar -> MyNat -> C IOs (Maybe Natural)
 readMVar _ Zero = return Nothing

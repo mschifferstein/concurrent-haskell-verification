@@ -20,8 +20,8 @@ open C public
 {-# COMPILE AGDA2HS C #-}
 
 instance
-    -- See https://wiki.haskell.org/Monad
-    -- Paper doesn't provide Functor/Applicative instances because only since GHC 7.10 are those superclasses of Monad
+    -- See https://wiki.haskell.org/Monad for fmap and <*> definitions.
+    -- Cleassen 1999 doesn't provide Functor/Applicative instances because only since GHC 7.10 are those superclasses of Monad.
     iFunctorC : ⦃ Monad m ⦄ → Functor (C m)
     iApplicativeC : ⦃ Monad m ⦄ → Applicative (C m)
     iMonadC : ⦃ Monad m ⦄ → Monad (C m)
@@ -70,8 +70,13 @@ data MyNat : Set where
     Suc : ( n : MyNat ) → MyNat
 {-# COMPILE AGDA2HS MyNat #-}
 
--- 'Fuel' is added as MyNat argument to make this function terminating. 
--- In practice, we can just pick some really large number when running it.
+{-
+'Fuel' is added as MyNat argument to make this function terminating. 
+In practice, we can just pick some really large number when running it.
+
+Returns a boolean value to indicate whether the program terminates.
+It is considered non-terminating if it runs out of fuel before all actions are performed.
+-}
 round_robin : ⦃ Monad m ⦄ → List (Action m) → MyNat → m Bool
 round_robin [] _ = return True
 round_robin xs Zero = return False
