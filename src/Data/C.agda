@@ -4,7 +4,7 @@ open import Haskell.Prelude
 open import Data.MonadTrans
 {-# FOREIGN AGDA2HS import Data.MonadTrans #-}
 
--- Whatever I'll prove holds under the assumption that the monads used are positive
+-- Whatever is proven holds under the assumption that the monads used are positive
 {-# NO_POSITIVITY_CHECK #-}
 data Action (m : Set → Set) : Set where
     Atom : m (Action m) → Action m
@@ -81,8 +81,8 @@ round_robin : ⦃ Monad m ⦄ → List (Action m) → MyNat → m Bool
 round_robin [] _ = return True
 round_robin xs Zero = return False
 round_robin (Atom x ∷ xs) (Suc n) = do
-                            x1 ← x
-                            round_robin (xs ++ (x1 ∷ [])) n
+                                        x1 ← x
+                                        round_robin (xs ++ (x1 ∷ [])) n
 round_robin (Fork x y ∷ xs) (Suc n) = round_robin (xs ++ (x ∷ y ∷ [])) n
 round_robin (Stop ∷ xs) (Suc n) = round_robin xs n
 {-# COMPILE AGDA2HS round_robin #-}

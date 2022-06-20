@@ -11,8 +11,6 @@ open import Data.IOs
 
 -- Version which uses IOs instead of postulates
 
--- TODO: resolve non-termination by introducing time-outs - can I throw an error?
-
 MVar : Set
 MVar = IORef Data
 {-# COMPILE AGDA2HS MVar #-}

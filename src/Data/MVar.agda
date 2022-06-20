@@ -8,19 +8,45 @@ open import Data.Writer
 {-# FOREIGN AGDA2HS import Data.MonadTrans #-}
 {-# FOREIGN AGDA2HS import Data.IORef #-} -- built into Haskell
 
--- TODO: resolve non-termination by introducing time-outs - can I throw an error?
--- TODO: postulate trace function (for debugging)
+{- 
+Defining the IO monad as the Identity monad rather than just postulating it allows us to extract values from it.
+This MVar definition, when translated to Haskell, works with Haskell's built-in IO and IORef.
+Note that some functions are still marked as non-terminating and thus cannot be used in proofs yet.
+-}
+
+record Identity (a : Set) : Set where
+  constructor Id
+  field
+    runId : a
+open Identity public
+
+instance
+    FunctorId : Functor Identity
+    ApplicativeId : Applicative Identity
+    MonadId : Monad Identity
+
+    FunctorId .fmap f x = x >>= (pure ∘ f)
+
+    ApplicativeId .pure = Id
+    ApplicativeId ._<*>_ mf ma = do 
+                                    f ← mf
+                                    a ← ma
+                                    pure (f a)
+
+    MonadId ._>>=_ = λ (Id x) f → f x
+
+IO = Identity
 
 postulate 
-    IO : Set → Set
+    -- IO : Set → Set
     IORef : Set → Set -- corresponds to Haskell's IORef
     newIORef : a → IO (IORef a)
     readIORef : IORef a → IO a
     writeIORef : IORef a → a → IO ⊤
 
-instance 
-    postulate
-        iMonadIO : Monad IO
+-- instance 
+--     postulate
+--         iMonadIO : Monad IO
 
 MVar : (a : Set) → Set
 MVar a = IORef (Maybe a × Bool)
@@ -45,9 +71,11 @@ endWrite : MVar a → a → IO ⊤
 endWrite v a = writeIORef v (Just a , True)
 {-# COMPILE AGDA2HS endWrite #-}
 
--- This version of writeMVar blocks when the MVar is full - in contrast to Claessen 1999, more true to actual (current) Haskell implementation.
--- According to the semantics of Peyton Jones (1996), writing to a full MVar throws an error instead.
--- Corresponds to putMVar in Control.Concurrent
+{-
+This version of writeMVar blocks when the MVar is full - in contrast to Claessen 1999, more true to actual (current) Haskell implementation.
+According to the semantics of Peyton Jones (1996), writing to a full MVar throws an error instead.
+Corresponds to putMVar in Control.Concurrent
+-}
 {-# NON_TERMINATING #-}
 writeMVar : MVar a → a → C IO ⊤
 writeMVar v a = do
@@ -78,11 +106,7 @@ takeMVar v = do
 
 takeIORef2 : MVar a → IO (Maybe a)
 takeIORef2 v = do
-                v1 ← readIORef v
-                -- case (fst v1) of λ
-                --     Just z → writeIORef v (Just z , True)
-                --     Nothing → writeIORef v (Nothing , True)
-                writeIORef v ((fst v1) , True) -- shouldn't be necessary, readIORef doesn't remove value?
+                v1 ← readIORef v -- doesn't remove value from MVar
                 return $ fst v1
 {-# COMPILE AGDA2HS takeIORef2 #-}
 
@@ -94,4 +118,4 @@ readMVar v = do
                 case v1 of λ 
                     {Nothing → readMVar v;
                      (Just a) → return a}
-{-# COMPILE AGDA2HS readMVar #-}
+{-# COMPILE AGDA2HS readMVar #-} 
